@@ -1,9 +1,15 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 
 # Request Schemas
 class TaskCreateSchema(BaseModel):
     task_title: str
+
+    
+class UserCreateSchema(BaseModel):
+    username: str
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=128)
 
 
 # Response Models
@@ -15,3 +21,9 @@ class TaskResponseSchema(BaseModel):
 class UpdateTaskSchema(BaseModel):
     task_title: str | None = None
     is_completed: bool | None = None
+
+
+class UserResponseSchema(BaseModel):
+    id: int
+    username: str
+    email: EmailStr

@@ -19,13 +19,15 @@ new_session = async_sessionmaker(engine, expire_on_commit=False)
 class Base(DeclarativeBase):
     pass
 
+
 # Session creation
 async def get_session():
     async with new_session() as session:
         yield session
 
+# Deprecated because of alembic
 # Database initialization (used during app startup)
-async def setup_database():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+# async def setup_database():
+#     async with engine.begin() as conn:
+#         await conn.run_sync(Base.metadata.drop_all)
+#         await conn.run_sync(Base.metadata.create_all)

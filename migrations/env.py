@@ -1,4 +1,4 @@
-from models import TasksModel
+from models import TasksModel, UsersModel
 from database import SYNC_DATABASE_URL, Base
 from logging.config import fileConfig
 

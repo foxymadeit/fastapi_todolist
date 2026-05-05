@@ -1,23 +1,16 @@
+import uvicorn
 from fastapi import FastAPI, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from schemas import TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema
-import uvicorn
-import pydantic
-import sqlalchemy
 from typing import Optional, Annotated, List
 from models import TasksModel
-from database import get_session, setup_database
-from contextlib import asynccontextmanager
+from database import get_session
+
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await setup_database()
-    yield
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 @app.get("/", tags=['Health'])
 def health():
