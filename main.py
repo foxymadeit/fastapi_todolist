@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from schemas import TaskCreate, TaskResponse, UpdateTask
+from schemas import TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema
 import uvicorn
 import pydantic
 import sqlalchemy
 from typing import Optional, Annotated, List
-from database import get_session, setup_database, TasksModel
+from models import TasksModel
+from database import get_session, setup_database
 from contextlib import asynccontextmanager
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -23,15 +24,15 @@ def health():
     return {"Status": "Ok"}
 
 
-@app.get("/tasks", response_model=List[TaskResponse] ,tags=['Tasks'])
+@app.get("/tasks", response_model=List[TaskResponseSchema] ,tags=['Tasks'])
 async def get_all_tasks(session: SessionDep):
     query = select(TasksModel)
     result = await session.execute(query)
     return result.scalars().all()
 
 
-@app.post("/tasks", response_model=TaskResponse, tags=['Tasks'])
-async def add_task(task: TaskCreate, session: SessionDep):
+@app.post("/tasks", response_model=TaskResponseSchema, tags=['Tasks'])
+async def add_task(task: TaskCreateSchema, session: SessionDep):
     new_task = TasksModel(
         task_title=task.task_title,
     )
@@ -42,7 +43,7 @@ async def add_task(task: TaskCreate, session: SessionDep):
 
 
 
-@app.get("/tasks/{id}", response_model=TaskResponse, tags=['Tasks'])
+@app.get("/tasks/{id}", response_model=TaskResponseSchema, tags=['Tasks'])
 async def get_task(id: int, session: SessionDep):
         query = select(TasksModel).where(TasksModel.id == id)
         result = await session.execute(query)
@@ -71,8 +72,8 @@ async def delete_task(id: int, session: SessionDep):
 
 
 
-@app.put("/tasks/{id}", response_model=TaskResponse, tags=['Tasks'])
-async def update_task(id: int, update_data: UpdateTask, session: SessionDep):
+@app.put("/tasks/{id}", response_model=TaskResponseSchema, tags=['Tasks'])
+async def update_task(id: int, update_data: UpdateTaskSchema, session: SessionDep):
     clean_data = update_data.model_dump(exclude_unset=True)
     
     if not clean_data:
