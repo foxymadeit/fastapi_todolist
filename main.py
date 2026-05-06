@@ -1,13 +1,15 @@
 import uvicorn
+from passlib.context import CryptContext
 from fastapi import FastAPI, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from schemas import TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema
+from schemas import (TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
+                      UserCreateSchema, UserResponseSchema)
 from typing import Optional, Annotated, List
-from models import TasksModel
+from models import TasksModel, UsersModel
 from database import get_session
 
-
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 app = FastAPI()
@@ -82,3 +84,30 @@ async def update_task(id: int, update_data: UpdateTaskSchema, session: SessionDe
     updated_task = await session.get(TasksModel, id)
 
     return updated_task
+
+@app.post("/auth/register",response_model=UserResponseSchema,tags=['Registration'])
+async def register_user(user: UserCreateSchema, session: SessionDep):
+    query = select(UsersModel).where(UsersModel.email == user.email)
+    result = await session.execute(query)
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        raise HTTPException(status_code=409,
+        detail=f"User with email:{user.email} is already registered in the system! ")
+    
+
+    hashed_password = pwd_context.hash(user.password)
+
+    if not existing_user:
+        new_user = UsersModel(
+            username = user.username,
+            email = user.email,
+            hashed_password = hashed_password
+        )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+        return new_user
+
+
+    
