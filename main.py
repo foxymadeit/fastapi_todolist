@@ -1,15 +1,17 @@
 import uvicorn
-from passlib.context import CryptContext
+import uuid
 from fastapi import FastAPI, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from schemas import (TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
-                      UserCreateSchema, UserResponseSchema)
+                      UserCreateSchema, UserResponseSchema,
+                      UserLoginSchema)
 from typing import Optional, Annotated, List
 from models import TasksModel, UsersModel
 from database import get_session
+from security import pwd_context, security
+from services import credentials_exception, get_user_by_email, verify_password
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 app = FastAPI()
@@ -93,21 +95,30 @@ async def register_user(user: UserCreateSchema, session: SessionDep):
 
     if existing_user:
         raise HTTPException(status_code=409,
-        detail=f"User with email:{user.email} is already registered in the system! ")
+        detail=f"User with email: {user.email} is already registered in the system! ")
     
 
     hashed_password = pwd_context.hash(user.password)
 
-    if not existing_user:
-        new_user = UsersModel(
+
+    new_user = UsersModel(
             username = user.username,
             email = user.email,
             hashed_password = hashed_password
         )
-        session.add(new_user)
-        await session.commit()
-        await session.refresh(new_user)
-        return new_user
+    session.add(new_user)
+    await session.commit()
+    await session.refresh(new_user)
+    return new_user
 
-
+@app.post("/auth/login", tags=['Authorization'])
+async def authorize_user(user_data: UserLoginSchema, session: SessionDep):
+    user = await get_user_by_email(user_data.email, session)
+    if not user:
+        raise credentials_exception
     
+    if not verify_password(user_data.password, user.hashed_password):
+        raise credentials_exception
+    
+    token = security.create_access_token(uid=str(user.id))
+    return {"access_token": token, "token_type": "bearer"}
