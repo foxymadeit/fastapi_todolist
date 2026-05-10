@@ -9,10 +9,12 @@ from schemas import (TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
 from typing import Optional, Annotated, List
 from models import TasksModel, UsersModel
 from database import get_session
-from security import pwd_context, security
-from services import credentials_exception, get_user_by_email, verify_password
+from security import pwd_context, create_access_token
+from datetime import timedelta
+from services import SessionDep, credentials_exception, get_user_by_email, verify_password, get_current_user
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
 
 app = FastAPI()
 
@@ -24,6 +26,12 @@ def health():
 @app.get("/tasks", response_model=List[TaskResponseSchema] ,tags=['Tasks'])
 async def get_all_tasks(session: SessionDep):
     query = select(TasksModel)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+@app.get("/tasks/my", response_model=List[TaskResponseSchema] ,tags=['Tasks'])
+async def get_my_tasks(session: SessionDep, current_user = Depends(get_current_user)):
+    query = select(TasksModel).where(TasksModel.user_id == current_user.id)
     result = await session.execute(query)
     return result.scalars().all()
 
@@ -120,5 +128,10 @@ async def authorize_user(user_data: UserLoginSchema, session: SessionDep):
     if not verify_password(user_data.password, user.hashed_password):
         raise credentials_exception
     
-    token = security.create_access_token(uid=str(user.id))
+
+    token = create_access_token(
+        data={'sub': str(user.id)},
+        expires_delta=timedelta(minutes=30)
+    )
     return {"access_token": token, "token_type": "bearer"}
+

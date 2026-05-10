@@ -1,18 +1,26 @@
-from authx import AuthX, AuthXConfig
+# from authx import AuthX, AuthXConfig
+from datetime import datetime, timedelta, timezone
+import jwt
 from passlib.context import CryptContext
+from typing import Annotated
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
-ACCES_TOKEN_NAME = os.getenv("JWT_ACCESS_TOKEN")
+
 SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
-config = AuthXConfig()
-config.JWT_SECRET_KEY = SECRET_KEY
-config.JWT_ACCESS_COOKIE_NAME = ACCES_TOKEN_NAME
-config.JWT_TOKEN_LOCATION = ['headers']
-security = AuthX(config=config)
