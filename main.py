@@ -1,12 +1,12 @@
 import uvicorn
 import uuid
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from schemas import (TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
                       UserCreateSchema, UserResponseSchema,
                       UserLoginSchema)
-from typing import Optional, Annotated, List
+from typing import List
 from models import TasksModel, UsersModel
 from security import pwd_context, create_access_token
 from datetime import timedelta
@@ -15,7 +15,7 @@ from services import (SessionDep,
                         credentials_exception,
                         get_user_by_email,
                         verify_password,
-                        get_current_user)
+                        log_task_created)
 
 
 
@@ -48,7 +48,8 @@ async def get_my_tasks(
 async def add_task(
     task: TaskCreateSchema,
     session: SessionDep,
-    current_user: UserDep
+    current_user: UserDep,
+    bg_tasks: BackgroundTasks
 ):
     
     new_task = TasksModel(
@@ -58,6 +59,7 @@ async def add_task(
     session.add(new_task)
     await session.commit()
     await session.refresh(new_task)
+    bg_tasks.add_task(log_task_created, task.task_title, current_user.id)
     return new_task
 
 
@@ -69,7 +71,7 @@ async def get_task(
     current_user: UserDep
 ):
         
-        query = select(TasksModel).where(TasksModel.id == id and TasksModel.user_id == current_user.id)
+        query = select(TasksModel).where(TasksModel.id == id, TasksModel.user_id == current_user.id)
         result = await session.execute(query)
         task = result.scalar_one_or_none()
 
@@ -89,7 +91,7 @@ async def delete_task(
     current_user: UserDep
 ):
     
-    query = delete(TasksModel).where(TasksModel.id == id and TasksModel.user_id == current_user.id)
+    query = delete(TasksModel).where(TasksModel.id == id, TasksModel.user_id == current_user.id)
     result = await session.execute(query)
     if result.rowcount == 0:
         raise HTTPException(
@@ -115,7 +117,7 @@ async def update_task(
         raise HTTPException(status_code=404, detail="No data provided for update!")
     
 
-    query = update(TasksModel).where(TasksModel.id == id and TasksModel.user_id == current_user.id).values(**clean_data)
+    query = update(TasksModel).where(TasksModel.id == id, TasksModel.user_id == current_user.id).values(**clean_data)
     result = await session.execute(query)
     if result.rowcount == 0:
         raise HTTPException(status_code=400, detail=f"Task with id {id} not found!")

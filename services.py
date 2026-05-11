@@ -56,3 +56,7 @@ async def get_current_user(session: SessionDep,
 
 
 UserDep = Annotated[UsersModel, Depends(get_current_user)]
+
+
+def log_task_created(task_title: str, user_id: int):
+    print(f"[LOG] User: {user_id} created task: '{task_title}'")
