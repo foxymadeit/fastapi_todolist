@@ -16,6 +16,8 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 http_bearer = HTTPBearer()
+
+# Dependencies
 TokenDep = Annotated[str, Depends(http_bearer)]
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
@@ -38,16 +40,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-async def get_current_user(session: SessionDep, token: HTTPAuthorizationCredentials = Depends(http_bearer)):
+async def get_current_user(session: SessionDep,
+                    token: HTTPAuthorizationCredentials = Depends(http_bearer)):
     try:
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        print(f"user_id from token: {user_id}")
         user = await session.get(UsersModel, int(user_id))
-        print(f"user from db: {user}")
         if user_id is None:
          raise credentials_exception
         return user
     except InvalidTokenError as e:
         print(f"JWT Error: {e}")
         raise credentials_exception
+
+
+
+UserDep = Annotated[UsersModel, Depends(get_current_user)]

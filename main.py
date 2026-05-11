@@ -8,10 +8,14 @@ from schemas import (TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
                       UserLoginSchema)
 from typing import Optional, Annotated, List
 from models import TasksModel, UsersModel
-from database import get_session
 from security import pwd_context, create_access_token
 from datetime import timedelta
-from services import SessionDep, credentials_exception, get_user_by_email, verify_password, get_current_user
+from services import (SessionDep,
+                        UserDep,
+                        credentials_exception,
+                        get_user_by_email,
+                        verify_password,
+                        get_current_user)
 
 
 
@@ -30,16 +34,26 @@ async def get_all_tasks(session: SessionDep):
     return result.scalars().all()
 
 @app.get("/tasks/my", response_model=List[TaskResponseSchema] ,tags=['Tasks'])
-async def get_my_tasks(session: SessionDep, current_user = Depends(get_current_user)):
+async def get_my_tasks(
+    session: SessionDep,
+    current_user: UserDep
+):
+    
     query = select(TasksModel).where(TasksModel.user_id == current_user.id)
     result = await session.execute(query)
     return result.scalars().all()
 
 
 @app.post("/tasks", response_model=TaskResponseSchema, tags=['Tasks'])
-async def add_task(task: TaskCreateSchema, session: SessionDep):
+async def add_task(
+    task: TaskCreateSchema,
+    session: SessionDep,
+    current_user: UserDep
+):
+    
     new_task = TasksModel(
-        task_title=task.task_title,
+        user_id = current_user.id,
+        task_title = task.task_title,
     )
     session.add(new_task)
     await session.commit()
@@ -49,8 +63,13 @@ async def add_task(task: TaskCreateSchema, session: SessionDep):
 
 
 @app.get("/tasks/{id}", response_model=TaskResponseSchema, tags=['Tasks'])
-async def get_task(id: int, session: SessionDep):
-        query = select(TasksModel).where(TasksModel.id == id)
+async def get_task( 
+    id: int,
+    session: SessionDep,
+    current_user: UserDep
+):
+        
+        query = select(TasksModel).where(TasksModel.id == id and TasksModel.user_id == current_user.id)
         result = await session.execute(query)
         task = result.scalar_one_or_none()
 
@@ -64,8 +83,13 @@ async def get_task(id: int, session: SessionDep):
 
 
 @app.delete("/tasks/{id}", tags=['Tasks'], status_code=204)
-async def delete_task(id: int, session: SessionDep):
-    query = delete(TasksModel).where(TasksModel.id == id)
+async def delete_task(
+    id: int,
+    session: SessionDep,
+    current_user: UserDep
+):
+    
+    query = delete(TasksModel).where(TasksModel.id == id and TasksModel.user_id == current_user.id)
     result = await session.execute(query)
     if result.rowcount == 0:
         raise HTTPException(
@@ -78,14 +102,20 @@ async def delete_task(id: int, session: SessionDep):
 
 
 @app.put("/tasks/{id}", response_model=TaskResponseSchema, tags=['Tasks'])
-async def update_task(id: int, update_data: UpdateTaskSchema, session: SessionDep):
+async def update_task(
+    id: int,
+    update_data: UpdateTaskSchema,
+    session: SessionDep,
+    current_user: UserDep
+):
+    
     clean_data = update_data.model_dump(exclude_unset=True)
     
     if not clean_data:
         raise HTTPException(status_code=404, detail="No data provided for update!")
     
 
-    query = update(TasksModel).where(TasksModel.id == id).values(**clean_data)
+    query = update(TasksModel).where(TasksModel.id == id and TasksModel.user_id == current_user.id).values(**clean_data)
     result = await session.execute(query)
     if result.rowcount == 0:
         raise HTTPException(status_code=400, detail=f"Task with id {id} not found!")
@@ -94,6 +124,8 @@ async def update_task(id: int, update_data: UpdateTaskSchema, session: SessionDe
     updated_task = await session.get(TasksModel, id)
 
     return updated_task
+
+
 
 @app.post("/auth/register",response_model=UserResponseSchema,tags=['Registration'])
 async def register_user(user: UserCreateSchema, session: SessionDep):
@@ -118,6 +150,8 @@ async def register_user(user: UserCreateSchema, session: SessionDep):
     await session.commit()
     await session.refresh(new_user)
     return new_user
+
+
 
 @app.post("/auth/login", tags=['Authorization'])
 async def authorize_user(user_data: UserLoginSchema, session: SessionDep):
