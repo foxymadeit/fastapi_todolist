@@ -22,7 +22,7 @@ services:
       - db
     env_file:
       - .env
-    image: todolist
+    image: todolist-app
     container_name: test
     restart: always
 
