@@ -1,4 +1,3 @@
-# from authx import AuthX, AuthXConfig
 from datetime import datetime, timedelta, timezone
 import jwt
 from passlib.context import CryptContext

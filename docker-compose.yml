@@ -14,3 +14,19 @@ services:
       - ./pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+
+  app:
+    environment:
+      POSTGRES_HOST: db
+    depends_on:
+      - db
+    env_file:
+      - .env
+    image: todolist
+    container_name: test
+    restart: always
+
+    ports:
+      - "1245:8000"
+
+  
