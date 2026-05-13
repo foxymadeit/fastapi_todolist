@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import jwt
 from passlib.context import CryptContext
-from typing import Annotated
+from fastapi.security import HTTPBearer
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -10,6 +10,8 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+http_bearer = HTTPBearer()
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):

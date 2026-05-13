@@ -1,5 +1,6 @@
 COMPOSE = docker compose
-.PHONY: run stop logs rebuild migration tests
+.PHONY: run stop logs build rebuild migration tests
+
 
 run:
 	$(COMPOSE) up -d
@@ -10,6 +11,9 @@ stop:
 
 logs:
 	$(COMPOSE) logs -f app
+
+build:
+	$(COMPOSE) build
 
 rebuild:
 	$(COMPOSE) up -d --build

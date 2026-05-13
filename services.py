@@ -1,11 +1,12 @@
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException
+from fastapi import Depends
+from database import get_session
+from security import http_bearer
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated
 from sqlalchemy import select
 from models import UsersModel
 from security import pwd_context
-from database import get_session
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt.exceptions import InvalidTokenError
 import os
@@ -15,11 +16,7 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
-http_bearer = HTTPBearer()
 
-# Dependencies
-TokenDep = Annotated[str, Depends(http_bearer)]
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 # General exception for email and password
 credentials_exception = HTTPException(
@@ -40,22 +37,20 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-async def get_current_user(session: SessionDep,
-                    token: HTTPAuthorizationCredentials = Depends(http_bearer)):
+async def get_current_user(
+    session: AsyncSession = Depends(get_session),
+    token: HTTPAuthorizationCredentials = Depends(http_bearer)
+):
     try:
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        user = await session.get(UsersModel, int(user_id))
         if user_id is None:
          raise credentials_exception
+        user = await session.get(UsersModel, int(user_id))
         return user
     except InvalidTokenError as e:
         print(f"JWT Error: {e}")
         raise credentials_exception
-
-
-
-UserDep = Annotated[UsersModel, Depends(get_current_user)]
 
 
 def log_task_created(task_title: str, user_id: int):

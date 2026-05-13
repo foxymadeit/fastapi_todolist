@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
-
+from fastapi import Query
+from enum import Enum
 
 # Request Schemas
 class TaskCreateSchema(BaseModel):
@@ -31,3 +32,16 @@ class UserResponseSchema(BaseModel):
     id: int
     username: str
     email: EmailStr
+
+
+class SortEnum(Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+class PaginationSchema(BaseModel):
+    page: int 
+    limit: int
+    order: SortEnum
+
+
+

@@ -1,21 +1,23 @@
 import uvicorn
 import uuid
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from schemas import (TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
-                      UserCreateSchema, UserResponseSchema,
-                      UserLoginSchema)
+from schemas import (
+    TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
+    UserCreateSchema, UserResponseSchema, UserLoginSchema
+)
 from typing import List
 from models import TasksModel, UsersModel
 from security import pwd_context, create_access_token
 from datetime import timedelta
-from services import (SessionDep,
-                        UserDep,
-                        credentials_exception,
-                        get_user_by_email,
-                        verify_password,
-                        log_task_created)
+from services import ( 
+credentials_exception,
+get_user_by_email,
+verify_password,
+log_task_created
+)
+
+from dependencies import SessionDep, UserDep, PaginationDep
 
 
 
@@ -27,9 +29,18 @@ def health():
     return {"Status": "Ok"}
 
 
-@app.get("/tasks", response_model=List[TaskResponseSchema] ,tags=['Tasks'])
-async def get_all_tasks(session: SessionDep):
-    query = select(TasksModel)
+@app.get("/tasks", response_model=List[TaskResponseSchema],tags=['Tasks'])
+async def get_all_tasks(session: SessionDep, pagination: PaginationDep):
+    query = (
+        select(TasksModel)
+    .limit(pagination.limit)
+    .offset(
+        pagination.page - 1
+        if pagination.page == 1
+        else (pagination.page - 1) * pagination.limit
+    )
+    .order_by(TasksModel.id)
+    )
     result = await session.execute(query)
     return result.scalars().all()
 

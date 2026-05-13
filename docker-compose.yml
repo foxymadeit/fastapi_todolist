@@ -16,13 +16,13 @@ services:
       - "5432:5432"
 
   app:
+    build: .
     environment:
       POSTGRES_HOST: db
     depends_on:
       - db
     env_file:
       - .env
-    image: todolist-app
     container_name: application
     restart: always
 
