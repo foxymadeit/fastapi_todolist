@@ -3,7 +3,7 @@ services:
     env_file:
       - .env
     image: postgres:15-alpine
-    container_name: test-db
+    container_name: database
     restart: always
 
     environment:
@@ -23,7 +23,7 @@ services:
     env_file:
       - .env
     image: todolist-app
-    container_name: test
+    container_name: application
     restart: always
 
     ports:
