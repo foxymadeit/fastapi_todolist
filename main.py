@@ -1,10 +1,11 @@
 import uvicorn
 import uuid
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, desc, asc
 from schemas import (
     TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
-    UserCreateSchema, UserResponseSchema, UserLoginSchema
+    UserCreateSchema, UserResponseSchema, UserLoginSchema,
+    SortEnum
 )
 from typing import List
 from models import TasksModel, UsersModel
@@ -31,15 +32,12 @@ def health():
 
 @app.get("/tasks", response_model=List[TaskResponseSchema],tags=['Tasks'])
 async def get_all_tasks(session: SessionDep, pagination: PaginationDep):
+    order = desc if pagination.order == SortEnum.DESC else asc
     query = (
         select(TasksModel)
     .limit(pagination.limit)
-    .offset(
-        pagination.page - 1
-        if pagination.page == 1
-        else (pagination.page - 1) * pagination.limit
-    )
-    .order_by(TasksModel.id)
+    .offset((pagination.page - 1) * pagination.limit)
+    .order_by(order(TasksModel.id))
     )
     result = await session.execute(query)
     return result.scalars().all()
@@ -47,10 +45,17 @@ async def get_all_tasks(session: SessionDep, pagination: PaginationDep):
 @app.get("/tasks/my", response_model=List[TaskResponseSchema] ,tags=['Tasks'])
 async def get_my_tasks(
     session: SessionDep,
-    current_user: UserDep
+    current_user: UserDep,
+    pagination: PaginationDep
 ):
-    
-    query = select(TasksModel).where(TasksModel.user_id == current_user.id)
+    order = desc if pagination.order == SortEnum.DESC else asc
+    query = (
+        select(TasksModel)
+        .where(TasksModel.user_id == current_user.id)
+        .limit(pagination.limit)
+        .offset((pagination.page - 1) * pagination.limit)
+        .order_by(order(TasksModel.id))
+        )
     result = await session.execute(query)
     return result.scalars().all()
 
