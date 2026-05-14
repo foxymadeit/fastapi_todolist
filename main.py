@@ -1,6 +1,7 @@
 import uvicorn
 import uuid
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, delete, update, desc, asc
 from schemas import (
     TaskCreateSchema, TaskResponseSchema, UpdateTaskSchema,
@@ -11,19 +12,25 @@ from typing import List
 from models import TasksModel, UsersModel
 from security import pwd_context, create_access_token
 from datetime import timedelta
-from services import ( 
-credentials_exception,
-get_user_by_email,
-verify_password,
-log_task_created
+from dependencies import SessionDep, UserDep, PaginationDep
+from services import (
+    credentials_exception, get_user_by_email,
+    verify_password, log_task_created
 )
 
-from dependencies import SessionDep, UserDep, PaginationDep
 
-
+origins = ["*"]
 
 
 app = FastAPI()
+# Adding CORS so that frontend can communicate with FastAPI backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/", tags=['Health'])
 def health():
