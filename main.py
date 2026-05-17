@@ -1,5 +1,4 @@
 import uvicorn
-import uuid
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, delete, update, desc, asc

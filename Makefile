@@ -24,4 +24,4 @@ migration:
 
 # Cmd to perfrom tests
 tests:
-	pytest -v -s
+	python3 -m pytest -v -s

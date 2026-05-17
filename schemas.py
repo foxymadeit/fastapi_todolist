@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr, Field
-from fastapi import Query
 from enum import Enum
 
 # Request Schemas

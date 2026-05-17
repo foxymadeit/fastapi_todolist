@@ -9,13 +9,11 @@ from models import UsersModel
 from security import pwd_context
 import jwt
 from jwt.exceptions import InvalidTokenError
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from config import settings
 
+SECRET_KEY = settings.SECRET_KEY.get_secret_value()
+ALGORITHM = settings.ALGORITHM
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
 
 
 # General exception for email and password

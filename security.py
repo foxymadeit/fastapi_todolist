@@ -2,15 +2,11 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from passlib.context import CryptContext
 from fastapi.security import HTTPBearer
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from config import settings
 
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
+SECRET_KEY = settings.SECRET_KEY.get_secret_value()
+ALGORITHM = settings.ALGORITHM
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 http_bearer = HTTPBearer()
 
 
