@@ -1,5 +1,5 @@
 COMPOSE = docker compose
-.PHONY: run stop logs build rebuild migration tests
+.PHONY: run stop logs migration tests pull
 
 
 run:
@@ -12,11 +12,10 @@ stop:
 logs:
 	$(COMPOSE) logs -f app
 
-build:
-	$(COMPOSE) build
+# Pull latest app image from Docker Hub
+pull:
+	docker pull foxxxy315/todolist-app:latest
 
-rebuild:
-	$(COMPOSE) up -d --build
 
 # Cmd to make new migrations. Requires msg variable to be provided during executiion
 migration:

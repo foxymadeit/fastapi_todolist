@@ -16,7 +16,7 @@ services:
       - "5432:5432"
 
   app:
-    build: .
+    image: foxxxy315/todolist-app:latest
     environment:
       POSTGRES_HOST: db
     depends_on:
