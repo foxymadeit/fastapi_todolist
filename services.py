@@ -51,5 +51,3 @@ async def get_current_user(
         raise credentials_exception
 
 
-def log_task_created(task_title: str, user_id: int):
-    print(f"[LOG] User: {user_id} created task: '{task_title}'")

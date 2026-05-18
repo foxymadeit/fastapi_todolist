@@ -15,7 +15,6 @@ SYNC_DATABASE_URL = f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DB_NAME}"
 
 engine = create_async_engine(ASYNC_DATABASE_URL)
 new_session = async_sessionmaker(engine, expire_on_commit=False)
-print(f"DATABASE_URL: {ASYNC_DATABASE_URL}")
 
 # Base Class for table creation
 class Base(DeclarativeBase):

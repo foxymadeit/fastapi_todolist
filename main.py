@@ -1,5 +1,6 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, delete, update, desc, asc
 from schemas import (
@@ -14,9 +15,9 @@ from datetime import timedelta
 from dependencies import SessionDep, UserDep, PaginationDep
 from services import (
     credentials_exception, get_user_by_email,
-    verify_password, log_task_created
+    verify_password
 )
-
+from logging_config import log_task_created, logger
 
 origins = ["*"]
 
@@ -30,6 +31,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == 401:
+        logger.warning(f"Unauthorized request to {request.url}")
+    elif exc.status_code >= 500:
+        logger.error(f"Server error {exc.status_code} on {request.url}")
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.get("/", tags=['Health'])
 def health():
@@ -52,7 +61,8 @@ async def get_all_tasks(session: SessionDep, pagination: PaginationDep):
 async def get_my_tasks(
     session: SessionDep,
     current_user: UserDep,
-    pagination: PaginationDep
+    pagination: PaginationDep,
+    bg_tasks: BackgroundTasks
 ):
     order = desc if pagination.order == SortEnum.DESC else asc
     query = (
@@ -63,6 +73,12 @@ async def get_my_tasks(
         .order_by(order(TasksModel.id))
         )
     result = await session.execute(query)
+    bg_tasks.add_task(logger.info, 
+    f"""
+    User: {current_user.id} retrieved their tasks with pagination: page {pagination.page},
+    limit {pagination.limit}, order {pagination.order}' 
+    """)
+    
     return result.scalars().all()
 
 
@@ -90,7 +106,8 @@ async def add_task(
 async def get_task( 
     id: int,
     session: SessionDep,
-    current_user: UserDep
+    current_user: UserDep,
+    bg_tasks: BackgroundTasks
 ):
         
         query = select(TasksModel).where(TasksModel.id == id, TasksModel.user_id == current_user.id)
@@ -102,6 +119,8 @@ async def get_task(
                 status_code=404,
                 detail=f"Task with id {id} not found!"
             )
+        bg_tasks.add_task(logger.info,
+                          f"User {current_user.id} has retrieved the task with id: {task.id}")
         return task
 
 
@@ -110,17 +129,20 @@ async def get_task(
 async def delete_task(
     id: int,
     session: SessionDep,
-    current_user: UserDep
+    current_user: UserDep,
+    bg_tasks: BackgroundTasks
 ):
     
     query = delete(TasksModel).where(TasksModel.id == id, TasksModel.user_id == current_user.id)
     result = await session.execute(query)
     if result.rowcount == 0:
+        logger.warning(f"Task with id {id} not found!")
         raise HTTPException(
             status_code=404,
             detail=f"Task with id {id} not found!"
         )
     await session.commit()
+    bg_tasks.add_task(logger.info, f"User {current_user.id} has deleted the task with id: {id}")
     return None
 
 
@@ -130,22 +152,26 @@ async def update_task(
     id: int,
     update_data: UpdateTaskSchema,
     session: SessionDep,
-    current_user: UserDep
+    current_user: UserDep,
+    bg_tasks: BackgroundTasks
 ):
     
     clean_data = update_data.model_dump(exclude_unset=True)
     
     if not clean_data:
+        logger.warning("No data provided for update!")
         raise HTTPException(status_code=404, detail="No data provided for update!")
     
 
     query = update(TasksModel).where(TasksModel.id == id, TasksModel.user_id == current_user.id).values(**clean_data)
     result = await session.execute(query)
     if result.rowcount == 0:
+        logger.warning(f"Task with id {id} not found!")
         raise HTTPException(status_code=400, detail=f"Task with id {id} not found!")
     
     await session.commit()
     updated_task = await session.get(TasksModel, id)
+    bg_tasks.add_task(logger.info, f"User {current_user.id} has updated the task with id: {id}")
 
     return updated_task
 
